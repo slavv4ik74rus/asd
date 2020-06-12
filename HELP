@@ -1,0 +1,224 @@
+#include <stdio.h>
+#include <math.h>
+#include <locale.h>
+#include <malloc.h>
+#pragma warning(disable:4996)
+
+void output_mat(double** A, int n) { // записать в промежуточный файл и вывести на экран матрицу
+    int i, j;
+    FILE* f = fopen("intermediate_result_mat.txt", "a");
+    for (i= 0; i < n; i++) {
+        for (j= 0; j < n; j++) {
+            fprintf(f, "%.1lf", A[i][j]);
+            printf("%lf ", A[i][j]);
+        }
+        printf("\n");
+        fprintf(f, "\n");
+    }
+    printf("\n");
+    fprintf(f, "\n");
+    printf("\n");
+    fprintf(f, "\n");
+
+    fclose(f);
+}
+
+void multmatr(double** a, double**b ,int n) {
+    /* Умножение матрицы на матрицу
+        Матрица a изменяется на результат умножения*/
+    int i, j;
+    double** c = (double**)malloc(n * (sizeof(double*)));
+    for (i= 0; i < n; i++) {
+        c[i] = (double*)malloc(n * sizeof(double));
+    }
+    for (i= 0; i < n; i++){
+        for (j= 0; j < n; j++){
+            c[i][j] = 0;
+            for (int k = 0; k < n; k++)
+                c[i][j] += a[i][k] * b[k][j];
+        }
+    }
+    for (i= 0; i < n; i++) {
+        for (j= 0; j < n; j++) {
+            a[i][j] = c[i][j];
+        }
+    }
+    free(c);
+    for (i = 0; i < n; i++)
+        free(c[i]);
+}
+
+double sledmat(double** a, int n) {
+    /* Вычисление следа матрицы 
+        Возвращает сумму главной диагонали матрицы*/
+    int i;
+    double sum = 0;
+    for (i= 0; i < n; i++) {
+        sum += a[i][i];
+    }
+    return sum;
+}
+
+void difmat(double** a,double** b, int n, double q) {
+    /* из матрицы вычитается q(из формулы)
+        Изменяется матрица b; матрица b становится a у который из диагонали отняли q*/
+    int i, j;
+    for (i= 0; i < n; i++) {
+        for (j= 0; j < n; j++) {
+            b[i][j] = a[i][j];
+            if (i == j)
+                b[i][j] -= q;
+        }
+    }
+}
+
+int invmatr(int n, const double* a) {
+    int i, j;
+    double** A = (double**)malloc(n * (sizeof(double*)));
+    double** B = (double**)malloc(n * (sizeof(double*)));
+    double** C = (double**)malloc(n * (sizeof(double*)));
+    for (i= 0; i < n; i++) {
+        A[i] = (double*)malloc(n * sizeof(double));
+        B[i] = (double*)malloc(n * sizeof(double));
+        C[i] = (double*)malloc(n * sizeof(double));
+    }
+    for (i= 0; i < n; i++) {
+        for (j= 0; j < n; j++) {
+            A[i][j] = a[i * n + j];
+            B[i][j] = 0;
+            C[i][j] = A[i][j];
+        }
+    }
+    
+
+
+    double q = sledmat(A, n);
+    difmat(A, B, n, q);
+
+    for (i= 2; i <= n; i++) {
+        multmatr(A, B, n);  // умножается А на B , A - результат умножения
+        q = sledmat(A, n) / i;
+        if(i!=n)
+            difmat(A, B, n, q);  // из диагонали матрицы A вычитается q, матрица B изменяется
+    }
+
+    for (i= 0; i < n; i++) {
+        for (j= 0; j < n; j++) {
+            B[i][j] = B[i][j] / q;
+        }
+    }
+    multmatr(B, C, n);
+
+
+
+    free(A);free(B);free(C);
+    for (i= 0; i < n; i++) {
+        free(A[i]);
+        free(B[i]);
+        free(C[i]);
+    }
+
+
+    return 1;
+}
+
+double f(double x) {
+    return 1 / x;
+}
+double func(double a, double b, int x, double step) {
+    int i;
+    double intgr = 0;
+    for (i= 0; i < x; i++) {
+        const double x1 = a + i * step;
+        const double x2 = a + (i + 1) * step;
+
+        intgr += 0.5 * (x2 - x1) * (f(x1) + f(x2));
+    }
+
+    return intgr;
+}
+
+
+double func2(double a, double b, double x) {
+    int i;
+    double step = (b - a) / x;
+
+    double intgr = 0;
+    for (i= 0; i < x; i++) {
+        double x1 = a + i * step;
+        double x2 = a + (i + 1) * step;
+
+        intgr += (x2 - x1) / 6.0 * (f(x1) + 4.0 * f(0.5 * (x1 + x2)) + f(x2));
+    }
+    return intgr;
+}
+
+double intgr2(double a, double b, int* n, double f(double), double e){
+    int x = n;
+    
+
+    double z1 = func(a, b, x, (b - a) / x);
+    x++;
+    double z2 = func(a, b, x, (b - a) / x);
+
+    while (fabs(z1 - z2) > e) {
+        z1 = func(a, b, x, (b - a) / x);
+        z2 = func(a, b, x + 1, (b - a) / x);
+        x++;
+    }
+
+
+    printf("%lf\n", z2);
+    return z2;
+}
+
+
+double intgr1(double a, double b, int* n, double f(double), double e) {
+    int x = n;
+
+    double z1 = func(a, b, x, (b - a) / x);
+    x++;
+    double z2 = func(a, b, x, (b - a) / x);
+
+    while (fabs(z1 - z2) > e) {
+        z1 = func(a, b, x, (b - a) / x);
+        z2 = func(a, b, x + 1, (b - a) / x);
+        x++;
+    }
+
+
+    printf("%lf\n", z2);
+    return z2;
+
+}
+
+
+int main() {
+    setlocale(LC_ALL, "rus");
+    int i;
+    /*
+    double a, b;
+    int n;
+    printf("\nВведите левый предел интегрирования");
+    scanf("%lf", &a);
+    printf("\nВведите правый предел интегрирования");
+    scanf("%lf", &b);
+    intgr1(a, b, 1, f, 0.001);
+    intgr2(a, b, 1, f, 0.001);
+
+    */
+    int n;
+    FILE* fin = fopen("input.txt","r");
+    printf("\nВведите n матрицы:");
+    scanf_s("%d", &n);
+    double* A = (double*)malloc((n*n) * sizeof(double));
+    for (i= 0; i < n*n; i++) {
+        fscanf_s(fin, "%lf", &A[i]);
+    }
+    fclose(fin);
+    invmatr(n, A);
+
+
+
+    return 0;
+}
